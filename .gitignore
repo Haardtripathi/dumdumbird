@@ -38,3 +38,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+arweave-keyfile-S_yzKO2UO5BAHFuzCzMN2VIaH-hwwe9SoH-5gK6ziOE.json
