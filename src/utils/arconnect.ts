@@ -1,24 +1,23 @@
 import Arweave from 'arweave';
 
+// Define base types
 type PermissionType = 'ACCESS_ADDRESS' | 'SIGN_TRANSACTION' | 'ACCESS_PUBLIC_KEY' | 'SIGNATURE';
 
 interface ArConnectError extends Error {
     code?: string;
 }
 
-// Add window interface extensions
+// Define wallet interface without modifying global window
+interface ArConnectWallet {
+    connect(permissions: PermissionType[]): Promise<void>;
+    disconnect(): Promise<void>;
+    getActiveAddress(): Promise<string>;
+}
+
+// Use type assertion when accessing window properties
 declare global {
     interface Window {
-        arweaveWallet?: {
-            connect(permissions: PermissionType[]): Promise<void>;
-            disconnect(): Promise<void>;
-            getActiveAddress(): Promise<string>;
-        };
-        arconnect?: {
-            connect(permissions: PermissionType[]): Promise<void>;
-            disconnect(): Promise<void>;
-            getActiveAddress(): Promise<string>;
-        };
+        arconnect?: ArConnectWallet;
     }
 }
 
@@ -28,6 +27,12 @@ export const arweave = Arweave.init({
     protocol: 'https'
 });
 
+// Helper to safely get the wallet instance
+const getWallet = (): ArConnectWallet | null => {
+    if (typeof window === 'undefined') return null;
+    return (window as any).arweaveWallet || window.arconnect || null;
+};
+
 // Enhanced browser detection to include ArConnect mobile app
 const getBrowserInfo = () => {
     if (typeof window === 'undefined') return 'server';
@@ -36,8 +41,7 @@ const getBrowserInfo = () => {
 
     // Check if ArConnect mobile app is available
     const isArConnectMobile = typeof window !== 'undefined' &&
-        ('arweaveWallet' in window ||
-            'arconnect' in window ||
+        (getWallet() !== null ||
             window?.location?.href?.includes('arconnect://'));
 
     if (userAgent.includes('mobile')) {
@@ -54,7 +58,7 @@ const getInstallationInstructions = () => {
     const browser = getBrowserInfo();
     switch (browser) {
         case 'arconnect-mobile':
-            return null; // No instructions needed, app is present
+            return null;
         case 'ios':
             return 'Please install ArConnect from the App Store: https://apps.apple.com/app/arconnect/id1607894720';
         case 'android':
@@ -71,13 +75,7 @@ const getInstallationInstructions = () => {
 // Enhanced ArConnect check for both mobile and desktop
 const checkForArConnect = (): boolean => {
     if (typeof window === 'undefined') return false;
-
-    // Check for various ways ArConnect might be available
-    return (
-        'arweaveWallet' in window ||
-        'arconnect' in window ||
-        window?.location?.href?.includes('arconnect://')
-    );
+    return getWallet() !== null || window?.location?.href?.includes('arconnect://');
 };
 
 // Modified wait function with mobile support
@@ -106,9 +104,7 @@ export async function connectToArConnect(): Promise<string> {
             }
         }
 
-        // Handle both mobile and desktop connections
-        const wallet = window.arweaveWallet || window.arconnect;
-
+        const wallet = getWallet();
         if (!wallet) {
             throw new Error('ArConnect wallet not found');
         }
@@ -146,7 +142,7 @@ export async function connectToArConnect(): Promise<string> {
 export async function disconnectFromArConnect(): Promise<void> {
     if (checkForArConnect()) {
         try {
-            const wallet = window.arweaveWallet || window.arconnect;
+            const wallet = getWallet();
             if (wallet) {
                 await wallet.disconnect();
             }
@@ -161,7 +157,7 @@ export async function isWalletConnected(): Promise<boolean> {
     if (!checkForArConnect()) return false;
 
     try {
-        const wallet = window.arweaveWallet || window.arconnect;
+        const wallet = getWallet();
         if (!wallet) return false;
 
         const address = await wallet.getActiveAddress();
