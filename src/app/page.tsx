@@ -36,21 +36,30 @@ export default function Home() {
   }
 
   async function handleConnect() {
+    setError(null);
+    setLoading(true);
+
     try {
       const address = await connectToArConnect();
       setWalletAddress(address);
-      setLoading(true);
 
       try {
-        console.log(address);
         await initializeAO(address);
       } catch (err) {
         console.error('Failed to initialize AO:', err);
-        setError(`Failed to initialize AO: ${err instanceof Error ? err.message : 'Unknown error occurred'}`);
+        setError(`Failed to initialize AO. Please try again.`);
       }
     } catch (err) {
-      console.error('Failed to connect:', err);
-      setError(`Failed to connect: ${err instanceof Error ? err.message : 'Unknown error occurred'}`);
+      console.error('Connection error:', err);
+      if (err instanceof Error) {
+        if (err.message.includes('not found')) {
+          setError('Please install ArConnect from arconnect.io and refresh the page');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Failed to connect to ArConnect');
+      }
     } finally {
       setLoading(false);
     }
