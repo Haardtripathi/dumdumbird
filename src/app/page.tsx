@@ -8,7 +8,6 @@ import { initializeAO, saveScore, fetchAllScores, resetAOConnection } from '../u
 import { ArrowRight, LogOut, Save, RefreshCw, Play } from 'lucide-react';
 import './globals.css'
 
-
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [allScores, setAllScores] = useState<{ player: string; score: number; timestamp: number }[]>([]);
@@ -27,8 +26,8 @@ export default function Home() {
       const scores = await fetchAllScores();
       console.log(scores, "INSIDE PAGE");
       setAllScores(scores);
-    } catch (error) {
-      console.error('Failed to fetch all scores:', error);
+    } catch (err) {
+      console.error('Failed to fetch all scores:', err);
       setError('Failed to fetch all scores. Please try again later.');
       setAllScores([]);
     } finally {
@@ -45,13 +44,13 @@ export default function Home() {
       try {
         console.log(address);
         await initializeAO(address);
-      } catch (error) {
-        console.error('Failed to initialize AO:', error);
-        setError(`Failed to initialize AO: ${error.message}`);
+      } catch (err) {
+        console.error('Failed to initialize AO:', err);
+        setError(`Failed to initialize AO: ${err instanceof Error ? err.message : 'Unknown error occurred'}`);
       }
-    } catch (error) {
-      console.error('Failed to connect:', error);
-      setError(`Failed to connect: ${error.message}`);
+    } catch (err) {
+      console.error('Failed to connect:', err);
+      setError(`Failed to connect: ${err instanceof Error ? err.message : 'Unknown error occurred'}`);
     } finally {
       setLoading(false);
     }
@@ -67,9 +66,9 @@ export default function Home() {
       await saveScore(walletAddress, currentScore);
       setGameEnded(false);
       setError('Score saved successfully!');
-    } catch (error) {
-      console.error('Failed to save score:', error);
-      setError(`Failed to save score: ${error.message}`);
+    } catch (err) {
+      console.error('Failed to save score:', err);
+      setError(`Failed to save score: ${err instanceof Error ? err.message : 'Unknown error occurred'}`);
     } finally {
       setIsSaving(false);
     }
@@ -89,8 +88,8 @@ export default function Home() {
       setAllScores([]);
       setError(null);
       setGameEnded(false);
-    } catch (error) {
-      console.error('Failed to disconnect:', error);
+    } catch (err) {
+      console.error('Failed to disconnect:', err);
       setError('Failed to disconnect. Please try again.');
     }
   }

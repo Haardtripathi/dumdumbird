@@ -2,7 +2,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-const FlappyBird = ({ onGameOver }) => {
+interface GameContext {
+    canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+}
+
+const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [score, setScore] = useState(0);
     const [gameOver, setGameOver] = useState(false);
@@ -14,10 +19,11 @@ const FlappyBird = ({ onGameOver }) => {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const birdImageRef = useRef<HTMLImageElement | null>(null);
+    const gameContextRef = useRef<GameContext | null>(null);
 
     useEffect(() => {
         const birdImage = new Image();
-        birdImage.src = "./DumDumBird.png"; // Ensure the path is correct
+        birdImage.src = "./DumDumBird.png";
         birdImage.onload = () => {
             birdImageRef.current = birdImage;
             setImageLoaded(true);
@@ -44,6 +50,9 @@ const FlappyBird = ({ onGameOver }) => {
             return;
         }
 
+        // Store the validated canvas and context
+        gameContextRef.current = { canvas, ctx };
+
         let animationFrameId: number;
         let birdY = canvas.height / 2;
         let birdVelocity = 0;
@@ -56,8 +65,7 @@ const FlappyBird = ({ onGameOver }) => {
         const birdSize = 40;
         const birdX = 100;
 
-        // Cloud positions
-        let clouds = Array(5).fill(null).map(() => ({
+        const clouds = Array(5).fill(null).map(() => ({
             x: Math.random() * canvas.width,
             y: Math.random() * (canvas.height / 2),
             speed: Math.random() * 0.5 + 0.5,
@@ -65,6 +73,9 @@ const FlappyBird = ({ onGameOver }) => {
         }));
 
         function drawClouds() {
+            if (!gameContextRef.current) return;
+            const { ctx, canvas } = gameContextRef.current;
+
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             clouds.forEach(cloud => {
                 ctx.beginPath();
@@ -82,10 +93,9 @@ const FlappyBird = ({ onGameOver }) => {
         }
 
         function drawBird() {
-            if (!birdImageRef.current) {
-                console.error("Bird image not loaded");
-                return;
-            }
+            if (!gameContextRef.current || !birdImageRef.current) return;
+            const { ctx } = gameContextRef.current;
+
             ctx.save();
             ctx.translate(birdX, birdY);
             ctx.rotate(birdRotation);
@@ -94,6 +104,9 @@ const FlappyBird = ({ onGameOver }) => {
         }
 
         function drawPipes() {
+            if (!gameContextRef.current) return;
+            const { ctx, canvas } = gameContextRef.current;
+
             ctx.fillStyle = 'green';
             pipes.forEach(pipe => {
                 ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
@@ -102,6 +115,9 @@ const FlappyBird = ({ onGameOver }) => {
         }
 
         function drawBackground() {
+            if (!gameContextRef.current) return;
+            const { ctx, canvas } = gameContextRef.current;
+
             // Sky
             ctx.fillStyle = '#87CEEB';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -115,12 +131,15 @@ const FlappyBird = ({ onGameOver }) => {
         }
 
         function drawScore() {
+            if (!gameContextRef.current) return;
+            const { ctx } = gameContextRef.current;
+
             ctx.fillStyle = 'white';
             ctx.font = 'bold 32px Arial';
             ctx.fillText(`Score: ${scoreRef.current}`, 10, 40);
         }
 
-        function gameLoop() {
+        const gameLoop = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
 
@@ -170,9 +189,9 @@ const FlappyBird = ({ onGameOver }) => {
             if (!gameOver) {
                 animationFrameId = requestAnimationFrame(gameLoop);
             }
-        }
+        };
 
-        function checkCollision() {
+        const checkCollision = () => {
             if (birdY + birdSize / 2 > canvas.height - 50 || birdY - birdSize / 2 < 0) {
                 return true;
             }
@@ -185,9 +204,9 @@ const FlappyBird = ({ onGameOver }) => {
                         birdY + birdSize / 2 > pipe.topHeight + pipeGap)
                 );
             });
-        }
+        };
 
-        function handleClick() {
+        const handleClick = () => {
             if (!gameStarted) {
                 setGameStarted(true);
                 setFadeIn(true);
@@ -207,7 +226,7 @@ const FlappyBird = ({ onGameOver }) => {
                 birdVelocity = 0;
                 pipes = [];
             }
-        }
+        };
 
         canvas.addEventListener('click', handleClick);
         gameLoop();
