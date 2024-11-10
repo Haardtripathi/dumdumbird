@@ -2,11 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 
-interface GameContext {
-    canvas: HTMLCanvasElement;
-    ctx: CanvasRenderingContext2D;
-}
-
 const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [score, setScore] = useState(0);
@@ -19,39 +14,47 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
     const [imageLoaded, setImageLoaded] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const birdImageRef = useRef<HTMLImageElement | null>(null);
-    const gameContextRef = useRef<GameContext | null>(null);
+    const projectileImageRef = useRef<HTMLImageElement | null>(null);
 
     useEffect(() => {
         const birdImage = new Image();
         birdImage.src = "./DumDumBird.png";
+        const projectileImage = new Image();
+        projectileImage.src = "./AO.png";
+
         birdImage.onload = () => {
             birdImageRef.current = birdImage;
-            setImageLoaded(true);
-            console.log("Bird image loaded successfully");
+            if (projectileImageRef.current) {
+                setImageLoaded(true);
+                console.log("All images loaded successfully");
+            }
+        };
+        projectileImage.onload = () => {
+            projectileImageRef.current = projectileImage;
+            if (birdImageRef.current) {
+                setImageLoaded(true);
+                console.log("All images loaded successfully");
+            }
         };
         birdImage.onerror = () => {
             setError("Failed to load bird image");
             console.error("Failed to load bird image");
         };
+        projectileImage.onerror = () => {
+            setError("Failed to load projectile image");
+            console.error("Failed to load projectile image");
+        };
     }, []);
 
     useEffect(() => {
-        if (!imageLoaded) return;
+        if (!imageLoaded || !canvasRef.current) return;
 
         const canvas = canvasRef.current;
-        if (!canvas) {
-            setError("Canvas not found");
-            return;
-        }
-
         const ctx = canvas.getContext('2d');
         if (!ctx) {
             setError("Unable to get 2D context");
             return;
         }
-
-        // Store the validated canvas and context
-        gameContextRef.current = { canvas, ctx };
 
         let animationFrameId: number;
         let birdY = canvas.height / 2;
@@ -65,6 +68,38 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
         const birdSize = 40;
         const birdX = 100;
 
+        // Projectile management with multiple projectiles
+        interface Projectile {
+            x: number;
+            y: number;
+            createdAt: number;
+            angle: number;
+            speed: number;
+        }
+
+        let projectiles: Projectile[] = [];
+        const projectileSize = 20;
+        const projectileLifetime = 1000; // 1 second lifetime
+        const numProjectilesPerShot = 5; // Number of projectiles per shot
+
+        const createProjectiles = () => {
+            const angleSpread = Math.PI / 4; // 45-degree spread
+            const baseAngle = Math.PI; // Shooting backwards (180 degrees)
+
+            for (let i = 0; i < numProjectilesPerShot; i++) {
+                const angle = baseAngle + (angleSpread * (i / (numProjectilesPerShot - 1)) - angleSpread / 2);
+                const speed = 3 + Math.random() * 2; // Random speed between 3 and 5
+
+                projectiles.push({
+                    x: birdX,
+                    y: birdY,
+                    createdAt: Date.now(),
+                    angle: angle,
+                    speed: speed
+                });
+            }
+        };
+
         const clouds = Array(5).fill(null).map(() => ({
             x: Math.random() * canvas.width,
             y: Math.random() * (canvas.height / 2),
@@ -72,10 +107,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
             size: Math.random() * 30 + 20
         }));
 
-        function drawClouds() {
-            if (!gameContextRef.current) return;
-            const { ctx, canvas } = gameContextRef.current;
-
+        const drawClouds = () => {
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             clouds.forEach(cloud => {
                 ctx.beginPath();
@@ -90,54 +122,66 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                     cloud.y = Math.random() * (canvas.height / 2);
                 }
             });
-        }
+        };
 
-        function drawBird() {
-            if (!gameContextRef.current || !birdImageRef.current) return;
-            const { ctx } = gameContextRef.current;
+        const drawProjectiles = () => {
+            const currentTime = Date.now();
+            projectiles = projectiles.filter(projectile => {
+                const age = currentTime - projectile.createdAt;
+                if (age > projectileLifetime) return false;
 
+                if (projectileImageRef.current) {
+                    ctx.save();
+                    const opacity = 1 - (age / projectileLifetime);
+                    ctx.globalAlpha = opacity;
+
+                    // Update projectile position based on angle and speed
+                    projectile.x += Math.cos(projectile.angle) * projectile.speed;
+                    projectile.y += Math.sin(projectile.angle) * projectile.speed;
+
+                    ctx.drawImage(
+                        projectileImageRef.current,
+                        projectile.x - projectileSize / 2,
+                        projectile.y - projectileSize / 2,
+                        projectileSize,
+                        projectileSize
+                    );
+                    ctx.restore();
+                }
+                return true;
+            });
+        };
+
+        const drawBird = () => {
+            if (!birdImageRef.current) return;
             ctx.save();
             ctx.translate(birdX, birdY);
             ctx.rotate(birdRotation);
             ctx.drawImage(birdImageRef.current, -birdSize / 2, -birdSize / 2, birdSize, birdSize);
             ctx.restore();
-        }
+        };
 
-        function drawPipes() {
-            if (!gameContextRef.current) return;
-            const { ctx, canvas } = gameContextRef.current;
-
+        const drawPipes = () => {
             ctx.fillStyle = 'green';
             pipes.forEach(pipe => {
                 ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
                 ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - pipe.topHeight - pipeGap);
             });
-        }
+        };
 
-        function drawBackground() {
-            if (!gameContextRef.current) return;
-            const { ctx, canvas } = gameContextRef.current;
-
-            // Sky
+        const drawBackground = () => {
             ctx.fillStyle = '#87CEEB';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw clouds
             drawClouds();
-
-            // Ground
             ctx.fillStyle = '#8B4513';
             ctx.fillRect(0, canvas.height - 50, canvas.width, 50);
-        }
+        };
 
-        function drawScore() {
-            if (!gameContextRef.current) return;
-            const { ctx } = gameContextRef.current;
-
+        const drawScore = () => {
             ctx.fillStyle = 'white';
             ctx.font = 'bold 32px Arial';
             ctx.fillText(`Score: ${scoreRef.current}`, 10, 40);
-        }
+        };
 
         const gameLoop = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -183,6 +227,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
             }
 
             drawPipes();
+            drawProjectiles();
             drawBird();
             drawScore();
 
@@ -217,6 +262,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                 birdVelocity = 0;
             } else if (!gameOver) {
                 birdVelocity = jumpStrength;
+                createProjectiles();
             } else {
                 setGameOver(false);
                 setGameStarted(true);
@@ -225,6 +271,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                 birdY = canvas.height / 2;
                 birdVelocity = 0;
                 pipes = [];
+                projectiles = [];
             }
         };
 

@@ -102,7 +102,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-300 text-gray-800">
       <div className="container mx-auto p-4 md:p-8">
-        <h1 className="text-4xl md:text-6xl font-bold mb-8 text-center text-blue-600">Flappy Bird on Arweave</h1>
+        <h1 className="text-4xl md:text-6xl font-bold mb-8 text-center text-blue-600">DumDum Bird on Arweave</h1>
 
         <AnimatePresence>
           {error && (
