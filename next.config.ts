@@ -1,6 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'export',
   reactStrictMode: true,
   webpack: (config: { resolve: { fallback: { fs: boolean; net: boolean; tls: boolean } } }, { isServer }: any) => {
     if (!isServer) {
