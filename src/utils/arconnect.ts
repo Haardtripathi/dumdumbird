@@ -1,13 +1,10 @@
 import Arweave from 'arweave';
 
-declare global {
-    interface Window {
-        arweaveWallet?: {
-            connect: (permissions: string[]) => Promise<void>;
-            disconnect: () => Promise<void>;
-            getActiveAddress: () => Promise<string>;
-        };
-    }
+// Define ArConnect permission types
+type PermissionType = 'ACCESS_ADDRESS' | 'SIGN_TRANSACTION' | 'ACCESS_PUBLIC_KEY' | 'SIGNATURE';
+
+interface ArConnectError extends Error {
+    code?: string;
 }
 
 export const arweave = Arweave.init({
@@ -16,70 +13,105 @@ export const arweave = Arweave.init({
     protocol: 'https'
 });
 
-const checkForArConnect = (): boolean => {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') {
-        return false;
-    }
+// Helper to detect the browser environment
+const getBrowserInfo = () => {
+    if (typeof window === 'undefined') return 'server';
 
-    // Check if ArConnect is installed
-    return window.arweaveWallet !== undefined;
+    const userAgent = window.navigator.userAgent.toLowerCase();
+    if (userAgent.includes('mobile')) {
+        // Detect specific mobile browsers
+        if (userAgent.includes('ios')) return 'ios';
+        if (userAgent.includes('android')) return 'android';
+        return 'mobile';
+    }
+    return 'desktop';
+};
+
+// Helper to get installation instructions based on browser
+const getInstallationInstructions = () => {
+    const browser = getBrowserInfo();
+    switch (browser) {
+        case 'ios':
+            return 'ArConnect is not available on iOS. Please use a desktop browser.';
+        case 'android':
+            return 'Please install ArConnect from the Chrome Web Store and use Chrome mobile browser.';
+        case 'mobile':
+            return 'Please use Chrome mobile browser and install ArConnect extension.';
+        case 'desktop':
+            return 'Please install ArConnect from https://arconnect.io';
+        default:
+            return 'Please install ArConnect from https://arconnect.io';
+    }
+};
+
+// Check if ArConnect is available
+const checkForArConnect = (): boolean => {
+    return typeof window !== 'undefined' && 'arweaveWallet' in window;
+};
+
+// Wait for ArConnect to initialize
+const waitForArConnect = async (timeout = 2000): Promise<void> => {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+        if (checkForArConnect()) return;
+        await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    throw new Error(getInstallationInstructions());
 };
 
 export async function connectToArConnect(): Promise<string> {
-    // Wait for window to be defined (important for Next.js)
-    if (typeof window === 'undefined') {
-        throw new Error('Cannot connect to ArConnect: Browser environment not available');
-    }
-
-    // Add a small delay to ensure window.arweaveWallet is initialized
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    if (!checkForArConnect()) {
-        // Provide a more helpful error message with installation instructions
-        throw new Error(
-            'ArConnect wallet not found. Please install ArConnect from https://arconnect.io and refresh the page'
-        );
-    }
-
     try {
-        await window.arweaveWallet?.connect(['ACCESS_ADDRESS', 'SIGN_TRANSACTION']);
+        // Wait for ArConnect to initialize
+        await waitForArConnect();
+
+        if (!checkForArConnect()) {
+            throw new Error(getInstallationInstructions());
+        }
+
+        // Request permissions
+        await window.arweaveWallet?.connect([
+            'ACCESS_ADDRESS',
+            'SIGN_TRANSACTION'
+        ] as PermissionType[]);
+
+        // Get wallet address
         const address = await window.arweaveWallet?.getActiveAddress();
 
         if (!address) {
-            throw new Error('Failed to get wallet address');
+            throw new Error('Failed to get wallet address. Please try again.');
         }
 
         return address;
     } catch (error) {
-        if (error instanceof Error) {
-            throw new Error(`Failed to connect to ArConnect: ${error.message}`);
+        const err = error as ArConnectError;
+
+        // Handle specific ArConnect errors
+        if (err.code === 'PERMISSION_DENIED') {
+            throw new Error('Connection rejected. Please approve the connection request.');
         }
-        throw new Error('An unknown error occurred while connecting to ArConnect');
+
+        if (err.message?.includes('timeout')) {
+            throw new Error(getInstallationInstructions());
+        }
+
+        // Re-throw the original error with more context if needed
+        throw new Error(err.message || 'Failed to connect to ArConnect. Please try again.');
     }
 }
 
 export async function disconnectFromArConnect(): Promise<void> {
-    // Check if we're in a browser environment
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    try {
-        if (checkForArConnect()) {
+    if (checkForArConnect()) {
+        try {
             await window.arweaveWallet?.disconnect();
+        } catch (error) {
+            console.error('Error disconnecting from ArConnect:', error);
+            throw new Error('Failed to disconnect from ArConnect');
         }
-    } catch (error) {
-        console.error('Error disconnecting from ArConnect:', error);
-        throw new Error('Failed to disconnect from ArConnect');
     }
 }
 
-// Helper function to check if wallet is connected
 export async function isWalletConnected(): Promise<boolean> {
-    if (!checkForArConnect()) {
-        return false;
-    }
+    if (!checkForArConnect()) return false;
 
     try {
         const address = await window.arweaveWallet?.getActiveAddress();
