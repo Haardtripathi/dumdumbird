@@ -6,6 +6,22 @@ interface ArConnectError extends Error {
     code?: string;
 }
 
+// Add window interface extensions
+declare global {
+    interface Window {
+        arweaveWallet?: {
+            connect(permissions: PermissionType[]): Promise<void>;
+            disconnect(): Promise<void>;
+            getActiveAddress(): Promise<string>;
+        };
+        arconnect?: {
+            connect(permissions: PermissionType[]): Promise<void>;
+            disconnect(): Promise<void>;
+            getActiveAddress(): Promise<string>;
+        };
+    }
+}
+
 export const arweave = Arweave.init({
     host: 'arweave.net',
     port: 443,
@@ -16,13 +32,13 @@ export const arweave = Arweave.init({
 const getBrowserInfo = () => {
     if (typeof window === 'undefined') return 'server';
 
-    const userAgent = window.navigator.userAgent.toLowerCase();
+    const userAgent = navigator.userAgent.toLowerCase();
 
     // Check if ArConnect mobile app is available
     const isArConnectMobile = typeof window !== 'undefined' &&
         ('arweaveWallet' in window ||
             'arconnect' in window ||
-            window.location.href.includes('arconnect://'));
+            window?.location?.href?.includes('arconnect://'));
 
     if (userAgent.includes('mobile')) {
         if (isArConnectMobile) return 'arconnect-mobile';
@@ -60,7 +76,7 @@ const checkForArConnect = (): boolean => {
     return (
         'arweaveWallet' in window ||
         'arconnect' in window ||
-        window.location.href.includes('arconnect://')
+        window?.location?.href?.includes('arconnect://')
     );
 };
 
@@ -91,16 +107,20 @@ export async function connectToArConnect(): Promise<string> {
         }
 
         // Handle both mobile and desktop connections
-        const wallet = window.arweaveWallet || (window as any).arconnect;
+        const wallet = window.arweaveWallet || window.arconnect;
+
+        if (!wallet) {
+            throw new Error('ArConnect wallet not found');
+        }
 
         // Request permissions
-        await wallet?.connect([
+        await wallet.connect([
             'ACCESS_ADDRESS',
             'SIGN_TRANSACTION'
         ] as PermissionType[]);
 
         // Get wallet address
-        const address = await wallet?.getActiveAddress();
+        const address = await wallet.getActiveAddress();
 
         if (!address) {
             throw new Error('Failed to get wallet address. Please try again.');
@@ -126,8 +146,10 @@ export async function connectToArConnect(): Promise<string> {
 export async function disconnectFromArConnect(): Promise<void> {
     if (checkForArConnect()) {
         try {
-            const wallet = window.arweaveWallet || (window as any).arconnect;
-            await wallet?.disconnect();
+            const wallet = window.arweaveWallet || window.arconnect;
+            if (wallet) {
+                await wallet.disconnect();
+            }
         } catch (error) {
             console.error('Error disconnecting from ArConnect:', error);
             throw new Error('Failed to disconnect from ArConnect');
@@ -139,8 +161,10 @@ export async function isWalletConnected(): Promise<boolean> {
     if (!checkForArConnect()) return false;
 
     try {
-        const wallet = window.arweaveWallet || (window as any).arconnect;
-        const address = await wallet?.getActiveAddress();
+        const wallet = window.arweaveWallet || window.arconnect;
+        if (!wallet) return false;
+
+        const address = await wallet.getActiveAddress();
         return !!address;
     } catch {
         return false;
