@@ -1,6 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  distDir: 'dist',
   webpack: (config: { resolve: { fallback: { fs: boolean; net: boolean; tls: boolean } } }, { isServer }: any) => {
     if (!isServer) {
       config.resolve.fallback = {
