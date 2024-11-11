@@ -4,19 +4,22 @@ import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FlappyBird from '../components/FlappyBird';
 import { connectToArConnect, disconnectFromArConnect } from '../utils/arconnect';
-import { initializeAO, saveScore, fetchAllScores, resetAOConnection } from '../utils/ao';
+import { initializeAO, saveScore, fetchAllScores, fetchPlayerScores, resetAOConnection } from '../utils/ao';
 import { ArrowRight, LogOut, Save, RefreshCw, Play } from 'lucide-react';
 import './globals.css'
 
 export default function Home() {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [allScores, setAllScores] = useState<{ player: string; score: number; timestamp: number }[]>([]);
+  const [allPlayerScores, setAllPlayerScores] = useState<{ player: string; score: number; timestamp: number }[]>([]);
+
   const [loading, setLoading] = useState<boolean>(false);
   const [currentScore, setCurrentScore] = useState<number>(0);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [gameEnded, setGameEnded] = useState<boolean>(false);
   const [fetchingScores, setFetchingScores] = useState<boolean>(false);
+  const [fetchingPlayerScores, setFetchingPlayerScores] = useState<boolean>(false);
   const [showInstructions, setShowInstructions] = useState<boolean>(false);
 
   async function handleFetchAllScores() {
@@ -30,6 +33,22 @@ export default function Home() {
       console.error('Failed to fetch all scores:', err);
       setError('Failed to fetch all scores. Please try again later.');
       setAllScores([]);
+    } finally {
+      setFetchingScores(false);
+    }
+  }
+
+  async function handleFetchPlayerScores() {
+    setFetchingScores(true);
+    setError(null);
+    try {
+      const scores = await fetchPlayerScores();
+      console.log(scores, "INSIDE PAGE");
+      setAllPlayerScores(scores);
+    } catch (err) {
+      console.error('Failed to fetch all scores:', err);
+      setError('Failed to fetch all scores. Please try again later.');
+      setAllPlayerScores([]);
     } finally {
       setFetchingScores(false);
     }
@@ -165,7 +184,7 @@ export default function Home() {
             )}
 
             <div className="bg-white p-4 rounded-lg shadow-md">
-              <h2 className="text-2xl font-bold mb-4">All Scores</h2>
+              <h2 className="text-2xl font-bold mb-4">All top 10 Scores</h2>
               <button
                 onClick={handleFetchAllScores}
                 className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full transition duration-300 ease-in-out flex items-center mb-4"
@@ -188,6 +207,46 @@ export default function Home() {
                     </thead>
                     <tbody>
                       {allScores
+                        .sort((a, b) => b.score - a.score)
+                        .map((score, index) => (
+                          <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                            <td className="px-4 py-2">{index + 1}</td>
+                            <td className="px-4 py-2 font-mono">{score.player.slice(0, 6)}...{score.player.slice(-4)}</td>
+                            <td className="px-4 py-2">{score.score}</td>
+                            <td className="px-4 py-2">{new Date(score.timestamp * 1000).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-center">No scores available</p>
+              )}
+            </div>
+            <div className="bg-white p-4 rounded-lg shadow-md">
+              <h2 className="text-2xl font-bold mb-4">Your Scores</h2>
+              <button
+                onClick={handleFetchPlayerScores}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-full transition duration-300 ease-in-out flex items-center mb-4"
+                disabled={fetchingPlayerScores}
+              >
+                <RefreshCw className="mr-2" size={18} /> {fetchingPlayerScores ? 'Fetching Scores...' : 'Fetch Your Scores'}
+              </button>
+              {fetchingPlayerScores ? (
+                <p className="text-center">Fetching scores...</p>
+              ) : allPlayerScores.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full bg-white rounded-lg overflow-hidden">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="px-4 py-2 text-left">Rank</th>
+                        <th className="px-4 py-2 text-left">Player</th>
+                        <th className="px-4 py-2 text-left">Score</th>
+                        <th className="px-4 py-2 text-left">Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allPlayerScores
                         .sort((a, b) => b.score - a.score)
                         .map((score, index) => (
                           <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
