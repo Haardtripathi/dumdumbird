@@ -113,6 +113,7 @@ export default function Home() {
       <div className="container mx-auto p-4 md:p-8">
         <h1 className="text-4xl md:text-6xl font-bold mb-8 text-center text-blue-600">DumDum Bird on Arweave</h1>
 
+
         <AnimatePresence>
           {error && (
             <motion.p
@@ -135,34 +136,36 @@ export default function Home() {
               </button>
             </div>
 
+
             <div className="bg-white p-4 rounded-lg shadow-md">
+              {gameEnded && (
+                <motion.div
+                  initial={{ y: 50, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  className="flex justify-center space-x-4 mt-4"
+                >
+                  <button
+                    onClick={handleSaveScore}
+                    className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full transition duration-300 ease-in-out flex items-center"
+                    disabled={isSaving}
+                  >
+                    <Save className="mr-2" size={18} /> {isSaving ? 'Saving...' : 'Save Score'}
+                  </button>
+                  <button
+                    onClick={handleRestartGame}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full transition duration-300 ease-in-out flex items-center"
+                  >
+                    <Play className="mr-2" size={18} /> Play Again
+                  </button>
+                </motion.div>
+              )}
               <FlappyBird onGameOver={handleGameOver} />
             </div>
 
             {loading && <p className="text-center">Loading...</p>}
             {isSaving && <p className="text-center">Saving high score...</p>}
 
-            {gameEnded && (
-              <motion.div
-                initial={{ y: 50, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                className="flex justify-center space-x-4 mt-4"
-              >
-                <button
-                  onClick={handleSaveScore}
-                  className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full transition duration-300 ease-in-out flex items-center"
-                  disabled={isSaving}
-                >
-                  <Save className="mr-2" size={18} /> {isSaving ? 'Saving...' : 'Save Score'}
-                </button>
-                <button
-                  onClick={handleRestartGame}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-full transition duration-300 ease-in-out flex items-center"
-                >
-                  <Play className="mr-2" size={18} /> Play Again
-                </button>
-              </motion.div>
-            )}
+
 
             <div className="bg-white p-4 rounded-lg shadow-md">
               <h2 className="text-2xl font-bold mb-4">All Scores</h2>
