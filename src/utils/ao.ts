@@ -142,6 +142,47 @@ export async function fetchAllScores(): Promise<{ player: string; score: number;
     }
 }
 
+export async function fetchPlayerScores(): Promise<{ player: string; score: number; timestamp: number }[]> {
+    try {
+        const { signer } = await getAOInstance();
+
+        // Send a request to fetch all scores
+        const messageOutput = await message({
+            process: PROCESS_ID,
+            signer,
+            tags: [{ name: 'Action', value: 'GetYourScores' }],
+            data: '',
+        });
+
+        console.log('Fetch all scores message sent:', messageOutput);
+
+        // Get the result of fetching scores
+        const resultOutput = await result({
+            message: messageOutput,
+            process: PROCESS_ID,
+        });
+
+        console.log('Fetch scores result:', JSON.stringify(resultOutput, null, 2));
+
+        if (resultOutput && resultOutput.Messages && resultOutput.Messages.length > 0) {
+            const messageData = JSON.parse(resultOutput.Messages[0].Data);
+
+            if (messageData.status === 'success' && Array.isArray(messageData.data)) {
+                return messageData.data.map((item) => ({
+                    player: item.wallet || 'Unknown',
+                    score: item.score || 0,
+                    timestamp: Math.floor(item.timestamp / 1000) // Convert to seconds
+                }));
+            }
+        }
+
+        return [];
+    } catch (error) {
+        console.error('Error fetching all scores:', error);
+        throw error;
+    }
+}
+
 export function resetAOConnection() {
     aoInstance = null;
     signer = null;
