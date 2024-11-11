@@ -89,7 +89,40 @@ Handlers.add("SaveScore",
 Handlers.add("GetAllScores",
     Handlers.utils.hasMatchingTag("Action", "GetAllScores"),
     function (msg)
-        print("Processing GetAllScores request for wallet: " .. msg.From)
+        print("Processing GetAllScores request for top 10 scores")
+        
+        -- Get the top 10 scores
+        local walletScores = {}
+        for i = 1, math.min(10, #HIGH_SCORES) do
+            table.insert(walletScores, HIGH_SCORES[i])
+        end
+        
+        if #walletScores == 0 then
+            Send({
+                Target = msg.From,
+                Data = json.encode({
+                    status = "success",
+                    message = "No scores available",
+                    data = {}
+                })
+            })
+            return
+        end
+    
+        Send({
+            Target = msg.From,
+            Data = json.encode({
+                status = "success",
+                message = "Top 10 scores retrieved successfully",
+                data = walletScores
+            })
+        })
+    end
+)
+
+Handlers.add("GetYourScores",
+    Handlers.utils.hasMatchingTag("Action", "GetYourScores"),
+    function (msg)
         
         -- Filter scores for the current wallet
         local walletScores = {}
