@@ -132,6 +132,7 @@ export default function Home() {
     <div className="min-h-screen bg-gradient-to-b from-blue-100 to-blue-300 text-gray-800">
       <div className="container mx-auto p-4 md:p-8">
         <h1 className="text-4xl md:text-6xl font-bold mb-8 text-center text-blue-600">DumDum Bird on Arweave</h1>
+        <p className="text-center text-sm text-gray-600 mb-8">🖥️ Game only works on web browsers for now.</p>
 
         <AnimatePresence>
           {error && (
