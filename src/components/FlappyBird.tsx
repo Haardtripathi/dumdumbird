@@ -261,6 +261,8 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
             <div className="flex flex-col items-center gap-4">
                 <div className="flex justify-between w-full mb-2 px-4">
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-3">
+                        <span className="text-lg font-bold text-yellow-400">Click or Press Spacebar to Jump</span>
+                        <hr />
                         <span className="text-lg font-bold text-yellow-400">High Score: {highScore}</span>
                     </div>
                     <div className="bg-white/10 backdrop-blur-md rounded-xl p-3">
