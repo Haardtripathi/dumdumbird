@@ -288,6 +288,8 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                 {gameOver && (
                     <div className="mt-4 space-y-4 text-center animate-fade-in">
                         <p className="text-xl text-red-400 font-bold">Game Over!</p>
+                        <p className="text-xl text-red-400 font-bold">Save game using button below</p>
+
                         <p className="text-white">Click or press Space to try again!</p>
                     </div>
                 )}
