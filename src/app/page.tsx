@@ -9,6 +9,7 @@ import { ArrowRight, LogOut, Save, RefreshCw, Play } from 'lucide-react';
 import './globals.css'
 
 export default function Home() {
+  
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [allScores, setAllScores] = useState<{ player: string; score: number; timestamp: number }[]>([]);
   const [allPlayerScores, setAllPlayerScores] = useState<{ player: string; score: number; timestamp: number }[]>([]);
