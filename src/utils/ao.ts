@@ -1,6 +1,6 @@
 import { createDataItemSigner, connect, result, message } from '@permaweb/aoconnect';
 
-const PROCESS_ID = "-86xcxHE3-6MO7UTbEq_eXjjpDbib0X8Lk-G6SXmjAY"
+const PROCESS_ID = "FwPCagJz7CiABTvnznYgHwNqYfcAbwuw2LUg-Ltzwhk"
 
 let aoInstance: any = null;
 let signer: any = null;
