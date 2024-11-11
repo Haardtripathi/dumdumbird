@@ -15,6 +15,14 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
     const [error, setError] = useState<string | null>(null);
     const birdImageRef = useRef<HTMLImageElement | null>(null);
     const projectileImageRef = useRef<HTMLImageElement | null>(null);
+    
+    // Add refs for game state
+    const gameStateRef = useRef({
+        birdY: 300,
+        birdVelocity: 0,
+        gameStarted: false,
+        gameOver: false
+    });
 
     useEffect(() => {
         const birdImage = new Image();
@@ -57,9 +65,6 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
         }
 
         let animationFrameId: number;
-        let birdY = canvas.height / 2;
-        let birdVelocity = 0;
-        let birdRotation = 0;
         let pipes: any[] = [];
         const gravity = 0.4;
         const jumpStrength = -8;
@@ -68,7 +73,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
         const birdSize = 40;
         const birdX = 100;
 
-        // Projectile management with multiple projectiles
+        // Projectile management
         interface Projectile {
             x: number;
             y: number;
@@ -79,20 +84,20 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
 
         let projectiles: Projectile[] = [];
         const projectileSize = 20;
-        const projectileLifetime = 1000; // 1 second lifetime
-        const numProjectilesPerShot = 5; // Number of projectiles per shot
+        const projectileLifetime = 1000;
+        const numProjectilesPerShot = 5;
 
         const createProjectiles = () => {
-            const angleSpread = Math.PI / 4; // 45-degree spread
-            const baseAngle = Math.PI; // Shooting backwards (180 degrees)
+            const angleSpread = Math.PI / 4;
+            const baseAngle = Math.PI;
 
             for (let i = 0; i < numProjectilesPerShot; i++) {
                 const angle = baseAngle + (angleSpread * (i / (numProjectilesPerShot - 1)) - angleSpread / 2);
-                const speed = 3 + Math.random() * 2; // Random speed between 3 and 5
+                const speed = 3 + Math.random() * 2;
 
                 projectiles.push({
                     x: birdX,
-                    y: birdY,
+                    y: gameStateRef.current.birdY,
                     createdAt: Date.now(),
                     angle: angle,
                     speed: speed
@@ -135,7 +140,6 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                     const opacity = 1 - (age / projectileLifetime);
                     ctx.globalAlpha = opacity;
 
-                    // Update projectile position based on angle and speed
                     projectile.x += Math.cos(projectile.angle) * projectile.speed;
                     projectile.y += Math.sin(projectile.angle) * projectile.speed;
 
@@ -155,8 +159,8 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
         const drawBird = () => {
             if (!birdImageRef.current) return;
             ctx.save();
-            ctx.translate(birdX, birdY);
-            ctx.rotate(birdRotation);
+            ctx.translate(birdX, gameStateRef.current.birdY);
+            ctx.rotate(Math.min(Math.max(gameStateRef.current.birdVelocity * 0.1, -0.5), 0.5));
             ctx.drawImage(birdImageRef.current, -birdSize / 2, -birdSize / 2, birdSize, birdSize);
             ctx.restore();
         };
@@ -183,14 +187,28 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
             ctx.fillText(`Score: ${scoreRef.current}`, 10, 40);
         };
 
+        const checkCollision = () => {
+            if (gameStateRef.current.birdY + birdSize / 2 > canvas.height - 50 || gameStateRef.current.birdY - birdSize / 2 < 0) {
+                return true;
+            }
+
+            return pipes.some(pipe => {
+                return (
+                    birdX + birdSize / 2 > pipe.x &&
+                    birdX - birdSize / 2 < pipe.x + pipeWidth &&
+                    (gameStateRef.current.birdY - birdSize / 2 < pipe.topHeight ||
+                        gameStateRef.current.birdY + birdSize / 2 > pipe.topHeight + pipeGap)
+                );
+            });
+        };
+
         const gameLoop = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             drawBackground();
 
-            if (gameStarted && !gameOver) {
-                birdVelocity += gravity;
-                birdY += birdVelocity;
-                birdRotation = Math.min(Math.max(birdVelocity * 0.1, -0.5), 0.5);
+            if (gameStateRef.current.gameStarted && !gameStateRef.current.gameOver) {
+                gameStateRef.current.birdVelocity += gravity;
+                gameStateRef.current.birdY += gameStateRef.current.birdVelocity;
 
                 pipes.forEach((pipe, index) => {
                     pipe.x -= 2;
@@ -217,6 +235,8 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                 }
 
                 if (checkCollision()) {
+                    gameStateRef.current.gameOver = true;
+                    gameStateRef.current.gameStarted = false;
                     setGameOver(true);
                     setGameStarted(false);
                     if (scoreRef.current > highScore) {
@@ -231,56 +251,65 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
             drawBird();
             drawScore();
 
-            if (!gameOver) {
+            if (!gameStateRef.current.gameOver) {
                 animationFrameId = requestAnimationFrame(gameLoop);
             }
         };
 
-        const checkCollision = () => {
-            if (birdY + birdSize / 2 > canvas.height - 50 || birdY - birdSize / 2 < 0) {
-                return true;
+        const handleJump = () => {
+            if (gameStateRef.current.gameStarted && !gameStateRef.current.gameOver) {
+                gameStateRef.current.birdVelocity = jumpStrength;
+                createProjectiles();
             }
-
-            return pipes.some(pipe => {
-                return (
-                    birdX + birdSize / 2 > pipe.x &&
-                    birdX - birdSize / 2 < pipe.x + pipeWidth &&
-                    (birdY - birdSize / 2 < pipe.topHeight ||
-                        birdY + birdSize / 2 > pipe.topHeight + pipeGap)
-                );
-            });
         };
 
         const handleClick = () => {
-            if (!gameStarted) {
+            if (!gameStateRef.current.gameStarted) {
+                gameStateRef.current.gameStarted = true;
+                gameStateRef.current.gameOver = false;
                 setGameStarted(true);
                 setFadeIn(true);
                 scoreRef.current = 0;
                 setScore(0);
                 pipes = [];
-                birdY = canvas.height / 2;
-                birdVelocity = 0;
-            } else if (!gameOver) {
-                birdVelocity = jumpStrength;
-                createProjectiles();
+                gameStateRef.current.birdY = canvas.height / 2;
+                gameStateRef.current.birdVelocity = 0;
+            } else if (!gameStateRef.current.gameOver) {
+                handleJump();
             } else {
+                gameStateRef.current.gameOver = false;
+                gameStateRef.current.gameStarted = true;
                 setGameOver(false);
                 setGameStarted(true);
                 scoreRef.current = 0;
                 setScore(0);
-                birdY = canvas.height / 2;
-                birdVelocity = 0;
+                gameStateRef.current.birdY = canvas.height / 2;
+                gameStateRef.current.birdVelocity = 0;
                 pipes = [];
                 projectiles = [];
             }
         };
 
         canvas.addEventListener('click', handleClick);
+
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.code === 'Space') {
+                event.preventDefault(); // Prevent page scrolling
+                if (!gameStateRef.current.gameStarted) {
+                    handleClick();
+                } else {
+                    handleJump();
+                }
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
         gameLoop();
 
         return () => {
             cancelAnimationFrame(animationFrameId);
             canvas.removeEventListener('click', handleClick);
+            window.removeEventListener('keydown', handleKeyDown);
         };
     }, [gameOver, gameStarted, onGameOver, highScore, imageLoaded]);
 
@@ -311,7 +340,7 @@ const FlappyBird = ({ onGameOver }: { onGameOver: (score: number) => void }) => 
                 {gameOver && (
                     <div className="mt-4 space-y-4 text-center animate-fade-in">
                         <p className="text-xl text-red-400 font-bold">Game Over!</p>
-                        <p className="text-white">Click to try again!</p>
+                        <p className="text-white">Click or press Space to try again!</p>
                     </div>
                 )}
             </div>
