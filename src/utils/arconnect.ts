@@ -21,11 +21,7 @@ declare global {
     }
 }
 
-export const arweave = Arweave.init({
-    host: 'arweave.net',
-    port: 443,
-    protocol: 'https'
-});
+export const arweave = Arweave.init({});
 
 // Helper to safely get the wallet instance
 const getWallet = (): ArConnectWallet | null => {
