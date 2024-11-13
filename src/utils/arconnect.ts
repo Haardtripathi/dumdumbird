@@ -27,7 +27,6 @@ export const arweave = Arweave.init({
     protocol: 'https'
 });
 
-
 // Helper to safely get the wallet instance
 const getWallet = (): ArConnectWallet | null => {
     if (typeof window === 'undefined') return null;
@@ -140,7 +139,7 @@ export async function connectToArConnect(): Promise<string> {
     }
 }
 
-rt async function disconnectFromArConnect(): Promise<void> {
+export async function disconnectFromArConnect(): Promise<void> {
     if (checkForArConnect()) {
         try {
             const wallet = getWallet();
@@ -154,7 +153,7 @@ rt async function disconnectFromArConnect(): Promise<void> {
     }
 }
 
-rt async function isWalletConnected(): Promise<boolean> {
+export async function isWalletConnected(): Promise<boolean> {
     if (!checkForArConnect()) return false;
 
     try {
