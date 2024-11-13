@@ -21,7 +21,12 @@ declare global {
     }
 }
 
-export const arweave = Arweave.init({});
+export const arweave = Arweave.init({
+    host: 'arweave.net',
+    port: 443,
+    protocol: 'https'
+});
+
 
 // Helper to safely get the wallet instance
 const getWallet = (): ArConnectWallet | null => {
@@ -135,7 +140,7 @@ export async function connectToArConnect(): Promise<string> {
     }
 }
 
-export async function disconnectFromArConnect(): Promise<void> {
+rt async function disconnectFromArConnect(): Promise<void> {
     if (checkForArConnect()) {
         try {
             const wallet = getWallet();
@@ -149,7 +154,7 @@ export async function disconnectFromArConnect(): Promise<void> {
     }
 }
 
-export async function isWalletConnected(): Promise<boolean> {
+rt async function isWalletConnected(): Promise<boolean> {
     if (!checkForArConnect()) return false;
 
     try {
